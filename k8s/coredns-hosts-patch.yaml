@@ -1,0 +1,61 @@
+# pi5-llm-1 is the standalone llama.cpp box serving Ollama-compatible inference
+# for jobfit-web/jobfit-worker (see k8s/configmap.yaml OLLAMA_BASE_URL). It's a
+# LAN device outside the k3s cluster and only advertises itself via mDNS
+# (pi5-llm-1.local), which CoreDNS cannot resolve, so it needs a static entry.
+#
+# NOTE: this intentionally patches the addon-managed `coredns` ConfigMap's
+# NodeHosts field rather than k3s's usual coredns-custom extension point.
+# coredns-custom's *.override files are for adding new plugins to the server
+# block; CoreDNS only allows one `hosts` plugin per block, and NodeHosts
+# already owns it, so a second `hosts {}` block in an override crashes CoreDNS
+# with "plugin/hosts: this plugin can only be used once per Server Block"
+# (confirmed by trial: see incident below). Appending to NodeHosts directly is
+# the only way to add a hosts entry without a second hosts plugin instance.
+#
+# k3s reconciles this ConfigMap as an addon and may revert this entry on a
+# future addon upgrade/reconcile. If OLLAMA_BASE_URL connections start failing
+# with DNS errors again, re-apply this file:
+#   kubectl apply -f k8s/coredns-hosts-patch.yaml
+#   kubectl -n kube-system rollout restart deployment coredns
+# `kubectl apply` replaces the entire ConfigMap `data` map (it is not a merge on
+# individual keys), so Corefile must be reproduced here verbatim alongside
+# NodeHosts or applying this file will delete Corefile and take CoreDNS down.
+# If the addon's Corefile is ever changed upstream, sync it here too.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        hosts /etc/coredns/NodeHosts {
+          ttl 60
+          reload 15s
+          fallthrough
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+        import /etc/coredns/custom/*.override
+    }
+    import /etc/coredns/custom/*.server
+  NodeHosts: |
+    192.168.1.100 pi4-1
+    192.168.1.102 pi4-3
+    192.168.1.103 pi4-4
+    192.168.1.104 pi5-1
+    192.168.1.105 pi5-2
+    192.168.1.106 pi5-3
+    192.168.1.107 pi5-4
+    192.168.0.202 pi5-llm-1
