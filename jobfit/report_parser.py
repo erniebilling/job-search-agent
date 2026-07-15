@@ -1,4 +1,7 @@
+import logging
 import re
+
+log = logging.getLogger(__name__)
 
 _LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 _SCORE_RE = re.compile(r"(\d+)")
@@ -88,6 +91,10 @@ def parse_report(report_markdown: str) -> list[dict]:
     parse failure never loses data.
     """
     try:
-        return parse_ranked_jobs(report_markdown) + parse_rejected_jobs(report_markdown)
+        ranked = parse_ranked_jobs(report_markdown)
+        rejected = parse_rejected_jobs(report_markdown)
+        log.info("Parsed %d ranked and %d rejected job entries", len(ranked), len(rejected))
+        return ranked + rejected
     except Exception:
+        log.warning("Failed to parse report markdown into job entries", exc_info=True)
         return []
