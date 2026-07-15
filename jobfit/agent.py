@@ -16,6 +16,12 @@ def build_agent() -> Agent:
         model_settings=ModelSettings(
             tool_choice="auto",
             parallel_tool_calls=True,
+            # Qwen3.5 is a thinking model: without this it burns its whole
+            # completion budget on reasoning_content and can return empty
+            # content once a turn's prompt is long enough (confirmed via
+            # direct llama-server test, and reproduced in a real run where the
+            # final report turn came back empty after all tool calls succeeded).
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         ),
         tools=[search_jobs, read_job_page],
         instructions=AGENT_INSTRUCTIONS,
