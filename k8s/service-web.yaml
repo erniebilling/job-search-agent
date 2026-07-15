@@ -4,10 +4,9 @@ metadata:
   name: jobfit-web
   namespace: jobfit
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: jobfit-web
   ports:
     - port: 7860
       targetPort: 7860
-      nodePort: 30786
