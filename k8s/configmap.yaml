@@ -4,7 +4,7 @@ metadata:
   name: jobfit-config
   namespace: jobfit
 data:
-  OLLAMA_BASE_URL: "http://host.docker.internal:11434/v1"
-  OLLAMA_MODEL: "qwen3:8b"
+  OLLAMA_BASE_URL: "http://pi5-llm-1:8080/v1"
+  OLLAMA_MODEL: "Qwen3.5-4B-Q4_K_M.gguf"
   OPENSERP_BASE_URL: "http://openserp.openserp.svc.cluster.local:80"
   DB_PATH: "/data/jobfit.db"
