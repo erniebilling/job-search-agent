@@ -1,0 +1,97 @@
+# Uses upstream karust/openserp (https://github.com/karust/openserp) rather than
+# the previously deployed registry.registry.svc.cluster.local:5000/openserp:latest
+# custom build. That custom image was search-only (no /extract route at all), so
+# jobfit/tools.py's read_job_page always failed with 404. karust/openserp:0.8.6 is
+# the last tag published with both linux/amd64 and linux/arm64 in its manifest
+# (confirmed via `manifest-tool inspect`; 0.8.10/latest are amd64-only as of this
+# writing) and its GET /extract?url=...&format=markdown response matches what
+# jobfit/tools.py already sends, so no application code changes were needed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openserp
+  namespace: openserp
+  labels:
+    app.kubernetes.io/name: openserp
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: openserp
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openserp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openserp
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: openserp
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - pi5-1
+                      - pi5-2
+                      - pi5-3
+                      - pi5-4
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: openserp
+      containers:
+        - name: openserp
+          image: karust/openserp:0.8.6
+          imagePullPolicy: Always
+          command: ["openserp", "serve", "-a", "0.0.0.0", "-p", "7000"]
+          ports:
+            - name: http
+              containerPort: 7000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1001
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
