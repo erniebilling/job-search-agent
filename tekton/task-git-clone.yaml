@@ -1,0 +1,28 @@
+# Minimal git-clone Task, vendored so this pipeline works without a
+# dependency on `tkn hub install` reaching the internet from the Pi.
+# Equivalent in spirit to the Tekton Hub git-clone Task, trimmed to
+# what this pipeline needs: clone a single revision into a workspace.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: jobfit
+spec:
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: "main"
+  workspaces:
+    - name: output
+  steps:
+    - name: clone
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        rm -rf "$(workspaces.output.path)/source"
+        git clone --depth 1 --branch "$(params.revision)" "$(params.url)" "$(workspaces.output.path)/source"
+        cd "$(workspaces.output.path)/source"
+        echo "Cloned $(git rev-parse HEAD)"

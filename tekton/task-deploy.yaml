@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy
+  namespace: jobfit
+spec:
+  params:
+    - name: image
+      type: string
+  steps:
+    - name: kubectl-set-image
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        kubectl set image deployment/jobfit-web jobfit-web="$(params.image)" -n jobfit
+        kubectl set image cronjob/jobfit-worker jobfit-worker="$(params.image)" -n jobfit
+        kubectl rollout status deployment/jobfit-web -n jobfit --timeout=180s

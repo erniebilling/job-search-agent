@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobfit-web
+  namespace: jobfit
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # avoid two pods holding the RWO PVC at once during rollout
+  selector:
+    matchLabels:
+      app: jobfit-web
+  template:
+    metadata:
+      labels:
+        app: jobfit-web
+    spec:
+      containers:
+        - name: jobfit-web
+          image: registry.jobfit.svc.cluster.local:5000/jobfit:latest
+          command: ["python", "-m", "web.app"]
+          ports:
+            - containerPort: 7860
+          envFrom:
+            - configMapRef:
+                name: jobfit-config
+            - secretRef:
+                name: jobfit-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: jobfit-data

@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: jobfit-build-deploy
+  namespace: jobfit
+spec:
+  params:
+    - name: git-url
+      type: string
+      description: HTTPS URL of the JobFit AI GitHub repo to build from.
+    - name: git-revision
+      type: string
+      default: "main"
+    - name: image-tag
+      type: string
+      default: "latest"
+  workspaces:
+    - name: source
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source
+    - name: build-and-push
+      taskRef:
+        name: kaniko-build
+      runAfter: ["fetch-source"]
+      params:
+        - name: image
+          value: registry.jobfit.svc.cluster.local:5000/jobfit:$(params.image-tag)
+        - name: context-subpath
+          value: source
+      workspaces:
+        - name: source
+          workspace: source
+    - name: deploy
+      taskRef:
+        name: deploy
+      runAfter: ["build-and-push"]
+      params:
+        - name: image
+          value: registry.jobfit.svc.cluster.local:5000/jobfit:$(params.image-tag)

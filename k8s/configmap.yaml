@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jobfit-config
+  namespace: jobfit
+data:
+  OLLAMA_BASE_URL: "http://host.docker.internal:11434/v1"
+  OLLAMA_MODEL: "qwen3:8b"
+  OPENSERP_BASE_URL: "http://openserp.default.svc.cluster.local:7000"
+  DB_PATH: "/data/jobfit.db"

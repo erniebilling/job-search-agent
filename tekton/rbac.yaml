@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jobfit-pipeline
+  namespace: jobfit
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jobfit-pipeline-deployer
+  namespace: jobfit
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jobfit-pipeline-deployer
+  namespace: jobfit
+subjects:
+  - kind: ServiceAccount
+    name: jobfit-pipeline
+    namespace: jobfit
+roleRef:
+  kind: Role
+  name: jobfit-pipeline-deployer
+  apiGroup: rbac.authorization.k8s.io

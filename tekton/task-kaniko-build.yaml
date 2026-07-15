@@ -1,0 +1,30 @@
+# Vendored to avoid a Tekton Hub dependency; wraps the standard Kaniko
+# executor image. --insecure/--insecure-pull are required because the
+# in-cluster registry (tekton/registry-deployment.yaml) serves plain HTTP.
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kaniko-build
+  namespace: jobfit
+spec:
+  params:
+    - name: image
+      type: string
+    - name: context-subpath
+      type: string
+      default: "source"
+    - name: dockerfile
+      type: string
+      default: "Dockerfile"
+  workspaces:
+    - name: source
+  steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - --context=$(workspaces.source.path)/$(params.context-subpath)
+        - --dockerfile=$(workspaces.source.path)/$(params.context-subpath)/$(params.dockerfile)
+        - --destination=$(params.image)
+        - --insecure
+        - --insecure-pull
+        - --skip-tls-verify

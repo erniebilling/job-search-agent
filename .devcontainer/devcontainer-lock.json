@@ -1,0 +1,9 @@
+{
+  "features": {
+    "ghcr.io/devcontainers-extra/features/kubectl-asdf:2": {
+      "version": "2.0.16",
+      "resolved": "ghcr.io/devcontainers-extra/features/kubectl-asdf@sha256:6cb74689a6ed2a71571b658e792deee75a640a93a77fafe6be1881b1c9759566",
+      "integrity": "sha256:6cb74689a6ed2a71571b658e792deee75a640a93a77fafe6be1881b1c9759566"
+    }
+  }
+}

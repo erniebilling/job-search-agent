@@ -1,0 +1,16 @@
+# ReadWriteOnce is sufficient on a single-node k3s cluster, where the
+# web Deployment and worker CronJob pods always land on the same node.
+# This does not work on a multi-node cluster without an RWX-capable
+# StorageClass.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jobfit-data
+  namespace: jobfit
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

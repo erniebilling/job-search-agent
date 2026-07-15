@@ -1,0 +1,34 @@
+# Example PipelineRun. Copy this file (or `kubectl create -f` it directly)
+# each time you want to trigger a build. `generateName` avoids name clashes
+# across runs; adjust git-revision/image-tag as needed.
+#
+# Trigger with:
+#   kubectl create -f tekton/pipelinerun-template.yaml
+# or, with the tkn CLI:
+#   tkn pipeline start jobfit-build-deploy \
+#     -n jobfit \
+#     -p git-url=https://github.com/<you>/JobFit-AI.git \
+#     -p git-revision=main \
+#     -p image-tag=$(date +%Y%m%d%H%M%S) \
+#     -w name=source,claimName=jobfit-pipeline-workspace \
+#     --serviceaccount=jobfit-pipeline
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: jobfit-build-deploy-
+  namespace: jobfit
+spec:
+  pipelineRef:
+    name: jobfit-build-deploy
+  serviceAccountName: jobfit-pipeline
+  params:
+    - name: git-url
+      value: https://github.com/<you>/JobFit-AI.git
+    - name: git-revision
+      value: main
+    - name: image-tag
+      value: latest
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: jobfit-pipeline-workspace
