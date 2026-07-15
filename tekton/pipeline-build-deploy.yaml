@@ -34,7 +34,7 @@ spec:
       runAfter: ["fetch-source"]
       params:
         - name: image
-          value: registry.jobfit.svc.cluster.local:5000/jobfit:$(params.image-tag)
+          value: registry.registry.svc.cluster.local:5000/jobfit:$(params.image-tag)
         - name: context-subpath
           value: source
       workspaces:
@@ -46,4 +46,4 @@ spec:
       runAfter: ["build-and-push"]
       params:
         - name: image
-          value: registry.jobfit.svc.cluster.local:5000/jobfit:$(params.image-tag)
+          value: registry.registry.svc.cluster.local:5000/jobfit:$(params.image-tag)

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: jobfit-web
-          image: registry.jobfit.svc.cluster.local:5000/jobfit:latest
+          image: registry.registry.svc.cluster.local:5000/jobfit:latest
           command: ["python", "-m", "web.app"]
           ports:
             - containerPort: 7860

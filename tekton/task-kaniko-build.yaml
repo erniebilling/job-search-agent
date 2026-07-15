@@ -1,6 +1,7 @@
 # Vendored to avoid a Tekton Hub dependency; wraps the standard Kaniko
 # executor image. --insecure/--insecure-pull are required because the
-# in-cluster registry (tekton/registry-deployment.yaml) serves plain HTTP.
+# shared cluster registry (registry.registry.svc.cluster.local:5000)
+# serves plain HTTP.
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
