@@ -16,6 +16,17 @@ spec:
       template:
         spec:
           restartPolicy: Never
+          # jobfit-data is a ReadWriteOnce Longhorn PVC already attached to jobfit-web's
+          # node; schedule onto that same node so Longhorn doesn't hit a Multi-Attach
+          # error (RWX was considered but SQLite WAL mode is unsafe over Longhorn's
+          # NFS-backed RWX, so both workloads must share a node instead).
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: jobfit-web
+                  topologyKey: kubernetes.io/hostname
           containers:
             - name: jobfit-worker
               image: registry.registry.svc.cluster.local:5000/jobfit:latest
