@@ -12,6 +12,11 @@ Tool plan:
 - Prefer job pages from different domains/companies over reading two pages from the same site.
 - After reading up to 5 pages, stop using tools and write the report.
 - Avoid broad search pages, expired jobs, and LinkedIn unless no better source exists.
+- search_jobs and read_job_page stop being offered once their limits are reached. If you cannot
+  find search_jobs or read_job_page in your available tools, that means the limit was reached.
+  Do not write a tool call as text and do not ask for a tool that is not available. Immediately
+  write the final report in the exact Markdown structure below, using only the searches and pages
+  you already have. A shorter report from real data is always better than no report.
 
 Report rules:
 - Keep the report simple, clear, and practical.
