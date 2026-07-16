@@ -83,8 +83,31 @@ def parse_rejected_jobs(report_markdown: str) -> list[dict]:
     return entries
 
 
-def parse_report(report_markdown: str) -> list[dict]:
+def _drop_unverified(entries: list[dict], seen_urls: set[str]) -> list[dict]:
+    """Drop entries whose url was never actually returned by search_jobs or
+    fetched by read_job_page, so a model cannot get a fabricated job into the
+    database just by writing a plausible-looking row in the report table."""
+    verified = []
+    for entry in entries:
+        url = entry.get("url")
+        if url and url in seen_urls:
+            verified.append(entry)
+        else:
+            log.warning(
+                "Dropping unverified job entry (url not observed during the run): title=%r company=%r url=%r",
+                entry.get("title"),
+                entry.get("company"),
+                url,
+            )
+    return verified
+
+
+def parse_report(report_markdown: str, seen_urls: set[str]) -> list[dict]:
     """Best-effort parse of a JobFit AI report into job_entries rows.
+
+    Every entry's url must be one the agent actually observed via
+    search_jobs/read_job_page (seen_urls); entries that don't match are
+    dropped as unverifiable rather than trusting the model's transcription.
 
     Returns an empty list if the report does not match the expected
     structure; the raw markdown is always preserved separately, so a
@@ -94,7 +117,14 @@ def parse_report(report_markdown: str) -> list[dict]:
         ranked = parse_ranked_jobs(report_markdown)
         rejected = parse_rejected_jobs(report_markdown)
         log.info("Parsed %d ranked and %d rejected job entries", len(ranked), len(rejected))
-        return ranked + rejected
+        verified = _drop_unverified(ranked + rejected, seen_urls)
+        if len(verified) < len(ranked) + len(rejected):
+            log.warning(
+                "Dropped %d of %d parsed entries as unverified",
+                len(ranked) + len(rejected) - len(verified),
+                len(ranked) + len(rejected),
+            )
+        return verified
     except Exception:
         log.warning("Failed to parse report markdown into job entries", exc_info=True)
         return []

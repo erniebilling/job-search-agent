@@ -2,15 +2,16 @@ import json
 import logging
 
 import requests
-from agents import function_tool
+from agents import RunContextWrapper, function_tool
 
 from jobfit.config import MAX_SCRAPED_CHARS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
+from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
 
 
 @function_tool
-def search_jobs(query: str, limit: int = MAX_SEARCH_RESULTS) -> str:
+def search_jobs(ctx: RunContextWrapper[JobFitRunContext], query: str, limit: int = MAX_SEARCH_RESULTS) -> str:
     """Search the web for job listings and return compact JSON results."""
     safe_limit = max(1, min(int(limit), MAX_SEARCH_RESULTS))
     log.info("search_jobs query=%r limit=%d", query, safe_limit)
@@ -26,12 +27,13 @@ def search_jobs(query: str, limit: int = MAX_SEARCH_RESULTS) -> str:
         for item in links
         if isinstance(item, dict) and item.get("url")
     ]
+    ctx.context.seen_urls.update(r["url"] for r in results)
     log.info("search_jobs query=%r returned %d usable results (of %d raw)", query, len(results), len(links))
     return json.dumps(results, ensure_ascii=False)
 
 
 @function_tool
-def read_job_page(url: str) -> str:
+def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
     """Scrape one job listing URL and return markdown text."""
     log.info("read_job_page url=%s", url)
     try:
@@ -45,5 +47,6 @@ def read_job_page(url: str) -> str:
         log.warning("read_job_page failed url=%s error=%s", url, exc)
         return ""
     text = response.text[:MAX_SCRAPED_CHARS]
+    ctx.context.seen_urls.add(url)
     log.info("read_job_page url=%s fetched %d chars (truncated to %d)", url, len(response.text), len(text))
     return text

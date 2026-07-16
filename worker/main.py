@@ -30,8 +30,8 @@ async def run() -> int:
     log.info("Starting run %s with model %s", run_id, OLLAMA_MODEL)
     with capture_run_logs() as log_buffer:
         try:
-            report_markdown = await run_jobfit_once(profile["cv_text"], profile["preferences"])
-            entries = parse_report(report_markdown)
+            report_markdown, seen_urls = await run_jobfit_once(profile["cv_text"], profile["preferences"])
+            entries = parse_report(report_markdown, seen_urls)
             if not entries:
                 log.warning("Report parsed to zero job entries; report may not match the expected structure")
             db.finish_run(
