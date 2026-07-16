@@ -1,6 +1,6 @@
 from agents import Agent, AsyncOpenAI, ModelSettings, OpenAIChatCompletionsModel, set_tracing_disabled
 
-from jobfit.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from jobfit.config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_TIMEOUT_SECONDS
 from jobfit.context import JobFitRunContext
 from jobfit.prompts import AGENT_INSTRUCTIONS
 from jobfit.tools import read_job_page, search_jobs
@@ -9,7 +9,7 @@ set_tracing_disabled(True)
 
 
 def build_agent() -> Agent[JobFitRunContext]:
-    ollama_client = AsyncOpenAI(api_key="ollama", base_url=OLLAMA_BASE_URL)
+    ollama_client = AsyncOpenAI(api_key="ollama", base_url=OLLAMA_BASE_URL, timeout=OLLAMA_TIMEOUT_SECONDS)
     ollama_model = OpenAIChatCompletionsModel(model=OLLAMA_MODEL, openai_client=ollama_client)
     return Agent(
         name="JobFit AI",
