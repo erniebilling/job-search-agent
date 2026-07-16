@@ -10,10 +10,21 @@ from jobfit.context import JobFitRunContext
 log = logging.getLogger(__name__)
 
 
-@function_tool
+def _search_jobs_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> bool:
+    """Remove search_jobs from the model's toolset once the cap is hit, instead
+    of just returning an error. A blocking error message alone was not enough:
+    a real run kept calling search_jobs 19 times after being told to stop,
+    burning its whole turn budget on the same blocked call instead of pivoting
+    to read_job_page, and never wrote a report. A tool it cannot see cannot be
+    retried."""
+    return ctx.context.search_call_count < MAX_SEARCH_CALLS
+
+
+@function_tool(is_enabled=_search_jobs_enabled)
 def search_jobs(ctx: RunContextWrapper[JobFitRunContext], query: str, limit: int = MAX_SEARCH_RESULTS) -> str:
     """Search the web for job listings and return compact JSON results."""
     if ctx.context.search_call_count >= MAX_SEARCH_CALLS:
+        # Defense in depth in case is_enabled is ever bypassed; should not be reachable.
         log.warning(
             "search_jobs blocked: already called %d times (limit %d); forcing read_job_page instead",
             ctx.context.search_call_count,
@@ -48,7 +59,18 @@ def search_jobs(ctx: RunContextWrapper[JobFitRunContext], query: str, limit: int
     return json.dumps(results, ensure_ascii=False)
 
 
-@function_tool
+def _read_job_page_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> bool:
+    """Remove read_job_page from the model's toolset once the count cap is
+    hit, for the same reason search_jobs is disabled above: a blocking error
+    message alone did not stop a real run from calling it 24+ times (ping-
+    ponging between the same two thin urls) until MaxTurnsExceeded killed it.
+    Kept enabled while under the cap even if some urls have already been
+    read, since it may still be called validly on a different url; the
+    per-url repeat check inside the tool handles that case."""
+    return ctx.context.read_call_count < MAX_PAGE_READS
+
+
+@function_tool(is_enabled=_read_job_page_enabled)
 def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
     """Scrape one job listing URL and return markdown text."""
     if url in ctx.context.read_urls:
@@ -62,6 +84,7 @@ def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
             }
         )
     if ctx.context.read_call_count >= MAX_PAGE_READS:
+        # Defense in depth in case is_enabled is ever bypassed; should not be reachable.
         log.warning(
             "read_job_page blocked: already called %d times (limit %d); forcing report instead",
             ctx.context.read_call_count,
