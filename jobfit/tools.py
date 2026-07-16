@@ -4,7 +4,7 @@ import logging
 import requests
 from agents import RunContextWrapper, function_tool
 
-from jobfit.config import MAX_SCRAPED_CHARS, MAX_SEARCH_CALLS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
+from jobfit.config import MAX_PAGE_READS, MAX_SCRAPED_CHARS, MAX_SEARCH_CALLS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
 from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
@@ -51,7 +51,33 @@ def search_jobs(ctx: RunContextWrapper[JobFitRunContext], query: str, limit: int
 @function_tool
 def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
     """Scrape one job listing URL and return markdown text."""
+    if url in ctx.context.read_urls:
+        log.warning("read_job_page blocked: url already read this run: %s", url)
+        return json.dumps(
+            {
+                "error": (
+                    "This url has already been read. Re-reading it will not return new "
+                    "content. Call read_job_page on a different url, or stop and write the report."
+                )
+            }
+        )
+    if ctx.context.read_call_count >= MAX_PAGE_READS:
+        log.warning(
+            "read_job_page blocked: already called %d times (limit %d); forcing report instead",
+            ctx.context.read_call_count,
+            MAX_PAGE_READS,
+        )
+        return json.dumps(
+            {
+                "error": (
+                    f"read_job_page has already been called {ctx.context.read_call_count} times. "
+                    "No more reading is allowed. Stop using tools and write the report now."
+                )
+            }
+        )
     log.info("read_job_page url=%s", url)
+    ctx.context.read_call_count += 1
+    ctx.context.read_urls.add(url)
     try:
         response = requests.get(
             f"{OPENSERP_BASE_URL}/extract",

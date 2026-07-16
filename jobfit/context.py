@@ -5,10 +5,14 @@ from dataclasses import dataclass, field
 class JobFitRunContext:
     """Tracks URLs the agent actually observed, so the report can be checked
     against ground truth instead of trusting the model's transcription. Also
-    tracks how many times search_jobs has been called, so a model that keeps
-    re-searching instead of reading pages (observed running 19 searches in a
-    row for over an hour without ever calling read_job_page) can be cut off
-    in code rather than relying on it following an advisory prompt rule."""
+    tracks how many times search_jobs and read_job_page have been called, so
+    a model that keeps re-searching or re-reading the same thin page instead
+    of making progress (observed running 19 searches in a row for over an
+    hour without ever calling read_job_page, and separately re-reading the
+    same two thin FlexJobs URLs 24+ times) can be cut off in code rather than
+    relying on it following an advisory prompt rule."""
 
     seen_urls: set[str] = field(default_factory=set)
     search_call_count: int = 0
+    read_call_count: int = 0
+    read_urls: set[str] = field(default_factory=set)
