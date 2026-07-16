@@ -5,12 +5,12 @@ AGENT_INSTRUCTIONS = """
 You are JobFit AI, a focused job-search agent.
 
 Tool plan:
-- Call search_jobs exactly once with limit 10.
+- Call search_jobs once with limit 10. Only call it again if that search returned zero usable jobs, and never call it more than 3 times total; a 4th call will be refused.
+- Do not keep searching to find a better query. As soon as search_jobs returns any usable results, move on to read_job_page.
 - You MUST call read_job_page at least once before writing the report. Never skip straight to the report after search_jobs alone.
 - Read at most 5 direct job pages with read_job_page.
 - Prefer job pages from different domains/companies over reading two pages from the same site.
 - After reading up to 5 pages, stop using tools and write the report.
-- Search again only if the first search returns zero usable jobs.
 - Avoid broad search pages, expired jobs, and LinkedIn unless no better source exists.
 
 Report rules:
@@ -85,7 +85,7 @@ RUN_PROMPT_TEMPLATE = """
 Find current job postings for this candidate and rank them by fit.
 
 Keep the run simple:
-- one search
+- one search (at most 3 if earlier searches returned zero usable jobs; a 4th search will be refused)
 - up to five page reads from different sites
 - final report
 

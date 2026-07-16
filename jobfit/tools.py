@@ -4,7 +4,7 @@ import logging
 import requests
 from agents import RunContextWrapper, function_tool
 
-from jobfit.config import MAX_SCRAPED_CHARS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
+from jobfit.config import MAX_SCRAPED_CHARS, MAX_SEARCH_CALLS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
 from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
@@ -13,6 +13,22 @@ log = logging.getLogger(__name__)
 @function_tool
 def search_jobs(ctx: RunContextWrapper[JobFitRunContext], query: str, limit: int = MAX_SEARCH_RESULTS) -> str:
     """Search the web for job listings and return compact JSON results."""
+    if ctx.context.search_call_count >= MAX_SEARCH_CALLS:
+        log.warning(
+            "search_jobs blocked: already called %d times (limit %d); forcing read_job_page instead",
+            ctx.context.search_call_count,
+            MAX_SEARCH_CALLS,
+        )
+        return json.dumps(
+            {
+                "error": (
+                    f"search_jobs has already been called {ctx.context.search_call_count} times. "
+                    "No more searching is allowed. Call read_job_page on one of the urls already "
+                    "returned by search_jobs, then write the report."
+                )
+            }
+        )
+    ctx.context.search_call_count += 1
     safe_limit = max(1, min(int(limit), MAX_SEARCH_RESULTS))
     log.info("search_jobs query=%r limit=%d", query, safe_limit)
     response = requests.get(

@@ -39,5 +39,9 @@ async def run_jobfit_once(cv_text: str, preferences: str) -> tuple[str, set[str]
     )
     num_items = len(getattr(result, "new_items", []) or [])
     log.info("Agent finished, generated %d run items, final_output length=%d chars", num_items, len(result.final_output))
-    log.info("Agent observed %d distinct URLs during the run", len(run_context.seen_urls))
+    log.info(
+        "Agent observed %d distinct URLs during the run, called search_jobs %d times",
+        len(run_context.seen_urls),
+        run_context.search_call_count,
+    )
     return extract_report(result.final_output), run_context.seen_urls
