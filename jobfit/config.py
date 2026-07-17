@@ -1,6 +1,14 @@
 import os
 
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")
+# Used to write the final report after search_agent hands off. Report writing
+# is one large generation over the full accumulated context (all search
+# results plus every scraped page), the single most expensive turn in the
+# whole run, where raw throughput matters more than the extra judgment a
+# bigger model brings to picking search queries and urls one at a time.
+# Defaults to OLLAMA_MODEL so a single model is used end to end unless this is
+# set explicitly.
+OLLAMA_REPORT_MODEL = os.environ.get("OLLAMA_REPORT_MODEL", OLLAMA_MODEL)
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1")
 OPENSERP_BASE_URL = os.environ.get("OPENSERP_BASE_URL", "https://openserp.broken-top.com")
 DB_PATH = os.environ.get("DB_PATH", "jobfit.db")

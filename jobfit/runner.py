@@ -64,7 +64,7 @@ async def run_jobfit_once(cv_text: str, preferences: str) -> tuple[str, set[str]
         )
         follow_up_input = result.to_input_list() + [{"role": "user", "content": _FORCE_REPORT_MESSAGE}]
         result = await Runner.run(
-            agent,
+            result.last_agent,
             follow_up_input,
             context=run_context,
             max_turns=3,
