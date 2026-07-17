@@ -5,6 +5,7 @@ metadata:
   namespace: jobfit
 data:
   OLLAMA_BASE_URL: "http://pi5-llm-1:8080/v1"
-  OLLAMA_MODEL: "Qwen3.5-2B-Q4_K_M"
+  OLLAMA_MODEL: "Qwen3.5-4B-Q4_K_M"
+  OLLAMA_REPORT_MODEL: "Qwen3.5-2B-Q4_K_M"
   OPENSERP_BASE_URL: "http://openserp.openserp.svc.cluster.local:80"
   DB_PATH: "/data/jobfit.db"
