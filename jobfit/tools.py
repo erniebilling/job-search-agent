@@ -16,8 +16,15 @@ def _search_jobs_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> boo
     a real run kept calling search_jobs 19 times after being told to stop,
     burning its whole turn budget on the same blocked call instead of pivoting
     to read_job_page, and never wrote a report. A tool it cannot see cannot be
-    retried."""
-    return ctx.context.search_call_count < MAX_SEARCH_CALLS
+    retried.
+
+    Also disabled once read_job_page is capped: two real runs read 5 good
+    pages, then used their remaining search budget to gather more urls they
+    could no longer read, and on discovering read_job_page gone wrote
+    <tool_call> XML as plain text instead of the report. Once reading is
+    capped there is nothing left to do with more search results, so search is
+    capped too, leaving write-the-report as the only option."""
+    return ctx.context.search_call_count < MAX_SEARCH_CALLS and ctx.context.read_call_count < MAX_PAGE_READS
 
 
 @function_tool(is_enabled=_search_jobs_enabled)
