@@ -11,6 +11,15 @@ MAX_SEARCH_CALLS = 3
 MAX_PAGE_READS = 5
 MAX_SCRAPED_CHARS = 8000
 
+# A model can keep retrying read_job_page on a url it has already read,
+# getting the "already read" block every time without ever hitting
+# MAX_PAGE_READS (that only counts successful new reads). One real run did
+# this 15 times in a row until MaxTurnsExceeded killed it. After this many
+# consecutive repeat-url blocks, read_job_page is disabled the same way it is
+# once MAX_PAGE_READS is reached, since keeping it available is not leading
+# anywhere new.
+MAX_CONSECUTIVE_REPEAT_READ_BLOCKS = 2
+
 # The openai client's default read timeout (600s) is shorter than a single
 # prompt-processing pass can legitimately take on this hardware (observed up
 # to ~20 min on a long context). llama-server has no way to cancel a request

@@ -16,3 +16,4 @@ class JobFitRunContext:
     search_call_count: int = 0
     read_call_count: int = 0
     read_urls: set[str] = field(default_factory=set)
+    repeat_read_block_count: int = 0

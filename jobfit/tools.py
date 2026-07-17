@@ -4,7 +4,14 @@ import logging
 import requests
 from agents import RunContextWrapper, function_tool
 
-from jobfit.config import MAX_PAGE_READS, MAX_SCRAPED_CHARS, MAX_SEARCH_CALLS, MAX_SEARCH_RESULTS, OPENSERP_BASE_URL
+from jobfit.config import (
+    MAX_CONSECUTIVE_REPEAT_READ_BLOCKS,
+    MAX_PAGE_READS,
+    MAX_SCRAPED_CHARS,
+    MAX_SEARCH_CALLS,
+    MAX_SEARCH_RESULTS,
+    OPENSERP_BASE_URL,
+)
 from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
@@ -24,7 +31,11 @@ def _search_jobs_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> boo
     <tool_call> XML as plain text instead of the report. Once reading is
     capped there is nothing left to do with more search results, so search is
     capped too, leaving write-the-report as the only option."""
-    return ctx.context.search_call_count < MAX_SEARCH_CALLS and ctx.context.read_call_count < MAX_PAGE_READS
+    return (
+        ctx.context.search_call_count < MAX_SEARCH_CALLS
+        and ctx.context.read_call_count < MAX_PAGE_READS
+        and ctx.context.repeat_read_block_count < MAX_CONSECUTIVE_REPEAT_READ_BLOCKS
+    )
 
 
 @function_tool(is_enabled=_search_jobs_enabled)
@@ -73,15 +84,31 @@ def _read_job_page_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> b
     ponging between the same two thin urls) until MaxTurnsExceeded killed it.
     Kept enabled while under the cap even if some urls have already been
     read, since it may still be called validly on a different url; the
-    per-url repeat check inside the tool handles that case."""
-    return ctx.context.read_call_count < MAX_PAGE_READS
+    per-url repeat check inside the tool handles that case.
+
+    Also disabled after too many consecutive repeat-url blocks: a real run
+    called read_job_page on the same already-read url 15 times in a row,
+    getting the "already read" error every time without ever incrementing
+    read_call_count (that only counts successful new reads), so the count
+    cap alone never kicked in. Repeatedly re-requesting the same url is not
+    going anywhere new, so this is treated the same as hitting the count cap."""
+    return (
+        ctx.context.read_call_count < MAX_PAGE_READS
+        and ctx.context.repeat_read_block_count < MAX_CONSECUTIVE_REPEAT_READ_BLOCKS
+    )
 
 
 @function_tool(is_enabled=_read_job_page_enabled)
 def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
     """Scrape one job listing URL and return markdown text."""
     if url in ctx.context.read_urls:
-        log.warning("read_job_page blocked: url already read this run: %s", url)
+        ctx.context.repeat_read_block_count += 1
+        log.warning(
+            "read_job_page blocked: url already read this run (consecutive repeat block %d/%d): %s",
+            ctx.context.repeat_read_block_count,
+            MAX_CONSECUTIVE_REPEAT_READ_BLOCKS,
+            url,
+        )
         return json.dumps(
             {
                 "error": (
@@ -90,6 +117,7 @@ def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
                 )
             }
         )
+    ctx.context.repeat_read_block_count = 0
     if ctx.context.read_call_count >= MAX_PAGE_READS:
         # Defense in depth in case is_enabled is ever bypassed; should not be reachable.
         log.warning(
