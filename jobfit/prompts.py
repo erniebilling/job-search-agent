@@ -17,6 +17,11 @@ Tool plan:
   search_jobs alone with nothing read.
 - Read at most 5 direct job pages with read_job_page.
 - Prefer job pages from different domains/companies over reading two pages from the same site.
+- Prefer a url for one specific job posting over a search results page, a jobs directory, or
+  any other page that lists many postings. A listing page's own content only has real value if
+  it links out to individual postings with real details; a listing page with no useful detail
+  wastes a read. If a search result looks like a directory or listing page, pick a different,
+  more specific result when one is available.
 - Avoid broad search pages, expired jobs, and LinkedIn unless no better source exists.
 - search_jobs and read_job_page stop being offered once their limits are reached. If you cannot
   find search_jobs or read_job_page in your available tools, that means the limit was reached.

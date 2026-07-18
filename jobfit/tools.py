@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 import requests
 from agents import RunContextWrapper, function_tool
@@ -15,6 +16,18 @@ from jobfit.config import (
 from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
+
+_MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)")
+
+
+def _extract_linked_urls(markdown_text: str) -> set[str]:
+    """Pull every url out of a markdown link in scraped page content. A
+    listing/aggregator page (e.g. a jobs directory) can legitimately contain
+    links to individual postings; a url a model quotes from a page it
+    genuinely fetched is verifiable the same way a search result is, so
+    these count as seen even though read_job_page was never called on them
+    directly."""
+    return set(_MARKDOWN_LINK_RE.findall(markdown_text))
 
 
 def _search_jobs_enabled(ctx: RunContextWrapper[JobFitRunContext], agent) -> bool:
@@ -148,5 +161,13 @@ def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
         return ""
     text = response.text[:MAX_SCRAPED_CHARS]
     ctx.context.seen_urls.add(url)
-    log.info("read_job_page url=%s fetched %d chars (truncated to %d)", url, len(response.text), len(text))
+    linked_urls = _extract_linked_urls(text)
+    ctx.context.seen_urls.update(linked_urls)
+    log.info(
+        "read_job_page url=%s fetched %d chars (truncated to %d), found %d linked urls in content",
+        url,
+        len(response.text),
+        len(text),
+        len(linked_urls),
+    )
     return text
