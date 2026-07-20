@@ -17,7 +17,7 @@ from jobfit.context import JobFitRunContext
 
 log = logging.getLogger(__name__)
 
-_MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)")
+_MARKDOWN_LINK_RE = re.compile(r"\]\((https?://[^)\s]+)\)")
 
 
 def _extract_linked_urls(markdown_text: str) -> set[str]:
@@ -26,7 +26,14 @@ def _extract_linked_urls(markdown_text: str) -> set[str]:
     links to individual postings; a url a model quotes from a page it
     genuinely fetched is verifiable the same way a search result is, so
     these count as seen even though read_job_page was never called on them
-    directly."""
+    directly.
+
+    Matches on "](" immediately before the url rather than requiring a
+    balanced "[label](" pair: real pages nest links inside link labels
+    (a company logo image link inside the job listing link that wraps it),
+    and a naive [^\\]]* label match stops at the first "]" it finds, which is
+    the nested image link's, not the real one thirty lines later. The label
+    text is never used, so only the "](url)" tail needs to match."""
     return set(_MARKDOWN_LINK_RE.findall(markdown_text))
 
 
@@ -161,10 +168,15 @@ def read_job_page(ctx: RunContextWrapper[JobFitRunContext], url: str) -> str:
         return ""
     text = response.text[:MAX_SCRAPED_CHARS]
     ctx.context.seen_urls.add(url)
-    linked_urls = _extract_linked_urls(text)
+    # Extracted from the full response, not just the truncated text sent to
+    # the model: a url appearing anywhere on a page the agent genuinely
+    # fetched is a real fact about that page, even if it fell past the
+    # MAX_SCRAPED_CHARS cutoff the model actually saw. One real page put its
+    # first job listing link at character offset 25000 on an 8000-char cutoff.
+    linked_urls = _extract_linked_urls(response.text)
     ctx.context.seen_urls.update(linked_urls)
     log.info(
-        "read_job_page url=%s fetched %d chars (truncated to %d), found %d linked urls in content",
+        "read_job_page url=%s fetched %d chars (truncated to %d), found %d linked urls on the full page",
         url,
         len(response.text),
         len(text),
