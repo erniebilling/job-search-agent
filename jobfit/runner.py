@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from agents import RunConfig, Runner
@@ -18,7 +19,10 @@ _FORCE_REPORT_MESSAGE = (
 
 
 def extract_report(text: str) -> str:
-    """Strip any narration a local model prepends before the report heading."""
+    """Strip any narration a local model prepends before the report heading,
+    then stamp the report with the date it was generated. Inserted in code
+    rather than asked of the model, since the model has no reliable notion of
+    the current date and would either omit it or invent one."""
     marker = "# JobFit AI Report"
     index = text.find(marker)
     if index == -1:
@@ -27,7 +31,11 @@ def extract_report(text: str) -> str:
             marker,
             len(text),
         )
-    return text[index:] if index != -1 else text
+        return text
+    report = text[index:]
+    generated_date = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    heading_end = len(marker)
+    return f"{report[:heading_end]}\n\n*Generated on {generated_date}*{report[heading_end:]}"
 
 
 def _looks_like_hallucinated_tool_call(text: str) -> bool:
@@ -45,6 +53,7 @@ async def run_jobfit_once(cv_text: str, preferences: str) -> tuple[str, set[str]
     can be checked against ground truth instead of trusting the model's output."""
     prompt = RUN_PROMPT_TEMPLATE.format(cv_text=cv_text, preferences=preferences)
     log.info("Running agent, prompt length=%d chars, max_turns=%d", len(prompt), MAX_AGENT_TURNS)
+    log.info("Job preferences used for this search: %s", preferences)
     run_context = JobFitRunContext()
     agent = build_agent()
     run_config = RunConfig(workflow_name="JobFit AI Ollama Search", tracing_disabled=True)
