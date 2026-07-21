@@ -28,6 +28,7 @@ async def run() -> int:
 
     run_id = db.create_run(model_name=OLLAMA_MODEL)
     log.info("Starting run %s with model %s", run_id, OLLAMA_MODEL)
+    log.info("CV file used for this run: %s", profile["cv_filename"])
     with capture_run_logs() as log_buffer:
         try:
             report_markdown, seen_urls = await run_jobfit_once(profile["cv_text"], profile["preferences"])
